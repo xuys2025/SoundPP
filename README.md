@@ -35,7 +35,8 @@
 
 ## 截图预览
 
-> 预留：建议在 `assets/` 目录添加 `screenshot-*.png` 并在此处引用。
+![界面预览](assets/screenshot-1.png)
+
 
 ## 快速开始
 
