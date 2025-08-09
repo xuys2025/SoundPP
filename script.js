@@ -38,6 +38,8 @@ let groups = [];
 // 批量选择/删除状态
 let isBulkSelectMode = false;
 const bulkSelectedIds = new Set();
+// 拖拽兜底：记录当前拖拽的音频ID
+let currentDraggingAudioId = null;
 
 // 初始化应用
 function initApp() {
@@ -194,6 +196,12 @@ function setupAudioListeners() {
             e.dataTransfer.setData('text/plain', 'A:' + String(id));
             e.dataTransfer.effectAllowed = 'move';
         } catch (_) {}
+        // 兜底：记录当前拖拽的音频ID
+        currentDraggingAudioId = String(id);
+    });
+    // 拖拽结束：清理兜底ID
+    audioList.addEventListener('dragend', () => {
+        currentDraggingAudioId = null;
     });
 
     // 监听批量选择复选框
@@ -420,13 +428,17 @@ function renderGroupSidebar() {
             <span>全部音频</span>
             <span class=\"count\">${allCount}</span>
         </div>
-    `].concat((groups||[]).map(g => `
-        <div class=\"group-item ${currentGroup===g.key?'active':''}\" data-group=\"${g.key}\" draggable=\"true\">
+    `].concat((groups||[]).map(g => {
+        // 确保 data-group 属性值安全且有效
+        const safeKey = String(g.key || '').replace(/['"<>&]/g, '');
+        return `
+        <div class=\"group-item ${currentGroup===g.key?'active':''}\" data-group=\"${safeKey}\" draggable=\"true\">
             <i class=\"fas fa-folder\"></i>
             <span>${g.name}</span>
             <span class=\"count\">${countByKey.get(g.key)||0}</span>
         </div>
-    `)).join('');
+        `;
+    })).join('');
     sidebarList.innerHTML = itemsHtml;
     bindGroupListEvents();
 }
@@ -438,13 +450,28 @@ function bindGroupListEvents() {
         // 拖拽目标行为：允许拖拽音频放入该分组
         item.addEventListener('dragover', (e) => {
             e.preventDefault();
+            try { if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; } catch (_) {}
             item.classList.add('drag-over');
         });
         item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
         item.addEventListener('drop', (e) => {
             e.preventDefault();
+            // 若成功处理音频放置，阻止后续冒泡到排序 drop
             item.classList.remove('drag-over');
-            const id = e.dataTransfer.getData('text/soundpp-audio-id');
+            // 兼容读取自定义与 text/plain 回退格式
+            let id = '';
+            try { id = e.dataTransfer.getData('text/soundpp-audio-id') || ''; } catch (_) { id = ''; }
+            if (!id) {
+                try {
+                    const plain = (e.dataTransfer.getData('text/plain') || '').trim();
+                    const m = /^A:(\d+)$/.exec(plain);
+                    if (m) id = m[1];
+                } catch (_) { /* ignore */ }
+            }
+            // 最后再次兜底：使用全局拖拽ID
+            if (!id && currentDraggingAudioId) {
+                id = String(currentDraggingAudioId);
+            }
             if (!id) return;
             const audio = audioFiles.find(a => String(a.id) === String(id));
             if (!audio) return;
@@ -455,6 +482,8 @@ function bindGroupListEvents() {
             renderAudioList(searchInput.value);
             updateGroupCounts();
             showNotification('已移动到分组');
+            // 明确阻止事件冒泡，避免触发排序 drop 监听
+            try { e.stopPropagation(); } catch (_) {}
         });
 
         // 分组排序：拖拽分组项到另一个分组项位置
@@ -462,6 +491,8 @@ function bindGroupListEvents() {
             try { e.dataTransfer.setData('text/soundpp-group-key', item.dataset.group); } catch (_) {}
         });
         item.addEventListener('drop', (e) => {
+            // 若是音频放置，忽略排序逻辑
+            try { if (e.dataTransfer && e.dataTransfer.getData('text/soundpp-audio-id')) return; } catch (_) {}
             const from = e.dataTransfer.getData('text/soundpp-group-key');
             const to = item.dataset.group;
             if (!from || !to || from === to || to === 'all') return;
@@ -767,12 +798,17 @@ function showEditModal(file) {
     if (nameInput) nameInput.value = file.name || '';
     if (descInput) descInput.value = file.description || '';
     if (groupSelect) {
-        const options = (groups||[]).map(g => `<option value="${g.key}">${g.name}</option>`).join('');
-        groupSelect.innerHTML = options;
+        // 生成分组选项，确保 value 属性安全且有效
+        const options = (groups||[]).map(g => {
+            const safeKey = String(g.key || '').replace(/['"<>&]/g, '');
+            const safeName = String(g.name || '').replace(/[<>&]/g, '');
+            return `<option value="${safeKey}">${safeName}</option>`;
+        }).join('');
+        groupSelect.innerHTML = options + `<option value="ungrouped">未分组</option>`;
         const value = file.group || 'ungrouped';
         groupSelect.value = value;
+        // 如果当前分组不在选项中，默认选择"未分组"
         if (groupSelect.value !== value) {
-            groupSelect.insertAdjacentHTML('beforeend', `<option value="ungrouped">未分组</option>`);
             groupSelect.value = 'ungrouped';
         }
     }
@@ -806,6 +842,8 @@ function showEditModal(file) {
     if (sliceBtn) sliceBtn.onclick = () => sliceCurrentSelection(file);
     
     modal.classList.add('show');
+    // 进入编辑模态时，确保不存在残留的热键录制，避免抢占输入焦点
+    try { if (window.__hotkeyRecordingCleanup) window.__hotkeyRecordingCleanup(); } catch (_) {}
 }
 
 function onConfirmEditSave() {
@@ -851,12 +889,28 @@ function onConfirmEditSave() {
 
     // 关闭
     modal.classList.remove('show');
+    // 若键盘录制处于活动状态，强制结束
+    try { if (window.__hotkeyRecordingCleanup) window.__hotkeyRecordingCleanup(); } catch (_) {}
     editingAudioId = null;
     disposeWaveform();
 }
 
 function slugify(name) {
-    return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+    if (!name || typeof name !== 'string') return '';
+    // 先尝试标准 slug 化（适用于英文/数字）
+    let slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+    // 如果结果为空（如纯中文），则使用简单的哈希方案
+    if (!slug) {
+        // 为中文或特殊字符生成基于内容的唯一 key
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            const char = name.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // 转换为 32bit 整数
+        }
+        slug = 'group-' + Math.abs(hash).toString(36);
+    }
+    return slug;
 }
 
 function deleteGroup(key) {
@@ -1228,10 +1282,20 @@ function confirmAddGroup() {
         showNotification('请输入分组名称');
         return;
     }
-    const key = slugify(name);
-    if ((groups||[]).some(g => g.key === key)) {
-        showNotification('该分组已存在');
-        return;
+    // 生成分组 key：优先使用 slug；若为空（如中文），回退为可读的唯一键
+    let key = slugify(name);
+    if (!key) {
+        key = 'g-' + Date.now();
+    }
+    // 确保唯一性（若同名导致 slug 冲突或时间戳极端碰撞，则追加编号）
+    if ((groups || []).some(g => g.key === key)) {
+        let i = 1;
+        let candidate = `${key}-${i}`;
+        while ((groups || []).some(g => g.key === candidate)) {
+            i += 1;
+            candidate = `${key}-${i}`;
+        }
+        key = candidate;
     }
     // 插入到当前选中组之后（若为“全部音频”，则追加到末尾）
     let index = groups.length;
@@ -1287,6 +1351,8 @@ function openEditGroupModal(targetKey) {
 function hideAddGroupModal() {
     const modal = document.getElementById('addGroupModal');
     if (modal) modal.classList.remove('show');
+    // 若键盘录制处于活动状态，强制结束
+    try { if (window.__hotkeyRecordingCleanup) window.__hotkeyRecordingCleanup(); } catch (_) {}
 }
 
 // 关闭模态框
@@ -1294,6 +1360,8 @@ function closeModals() {
     document.querySelectorAll('.modal').forEach(modal => {
         modal.classList.remove('show');
     });
+    // 若键盘录制处于活动状态，强制结束，避免拦截输入导致光标消失
+    try { if (window.__hotkeyRecordingCleanup) window.__hotkeyRecordingCleanup(); } catch (_) {}
 }
 
 function setupSettingsHandlers() {
@@ -1881,6 +1949,8 @@ function updateVolumeIconInSettings(volume) {
 // 录制快捷键（组合键捕获）
 async function startRecordingHotkey(displayInput, recordBtn) {
     if (!displayInput) return;
+    // 若存在上一次未清理的录制，先安全结束
+    try { if (window.__hotkeyRecordingCleanup) window.__hotkeyRecordingCleanup(); } catch (_) {}
     // 暂停全局快捷键，避免录制期间触发已注册的快捷键
     try {
         await ipcRenderer.invoke('unregister-all-shortcuts');
@@ -1900,6 +1970,10 @@ async function startRecordingHotkey(displayInput, recordBtn) {
         if (!onlyModifier) {
             displayInput.dataset.accelerator = accelerator;
         }
+        // 按下 ESC 时立即结束录制，避免悬挂状态
+        if (e.key === 'Escape') {
+            end();
+        }
     };
     const onKeyUp = (e) => {
         // 结束录制
@@ -1910,12 +1984,24 @@ async function startRecordingHotkey(displayInput, recordBtn) {
         window.removeEventListener('keyup', onKeyUp, true);
         displayInput.classList.remove('recording');
         if (recordBtn) recordBtn.disabled = false;
+        if (window.__hotkeyRecordingTimeout) {
+            clearTimeout(window.__hotkeyRecordingTimeout);
+            window.__hotkeyRecordingTimeout = null;
+        }
+        // 清理标记
+        window.__hotkeyRecordingCleanup = null;
         // 恢复全局快捷键（根据当前保存的设置）
         reapplyHotkeysAfterRecording();
     };
 
     window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('keyup', onKeyUp, true);
+    // 兜底：超时自动结束，防止因为 keyup 丢失导致录制常驻
+    window.__hotkeyRecordingTimeout = setTimeout(() => {
+        try { end(); } catch (_) {}
+    }, 15000);
+    // 暴露全局清理，供其他关闭逻辑调用
+    window.__hotkeyRecordingCleanup = end;
 }
 
 function buildAcceleratorFromEvent(e) {
