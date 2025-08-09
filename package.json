@@ -59,6 +59,10 @@
       "linux": {
         "target": ["AppImage"],
         "category": "AudioVideo"
+      },
+      "publish": {
+        "provider": "github",
+        "releaseType": "draft"
       }
     }
 }
