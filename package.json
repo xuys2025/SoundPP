@@ -1,0 +1,64 @@
+{
+  "name": "soundpp",
+  "version": "1.0.1",
+  "description": "SoundPP - 音效快捷键管理器",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "build:win": "electron-builder --win portable nsis",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": ["electron", "audio", "hotkey", "sound", "desktop"],
+  "author": "SoundPP Team",
+  "license": "MIT",
+  "homepage": "https://github.com/soundpp/soundpp",
+  "repository": {
+     "type": "git",
+     "url": "https://github.com/soundpp/soundpp.git"
+   },
+    "devDependencies": {
+      "electron": "^37.2.6",
+      "electron-builder": "^24.13.3"
+    },
+   "dependencies": {
+     "wavesurfer.js": "^7.7.0",
+     "adm-zip": "^0.5.10"
+    },
+    "build": {
+      "appId": "com.soundpp.app",
+      "productName": "SoundPP",
+      "asar": false,
+      "files": [
+        "index.html",
+        "main.js",
+        "script.js",
+        "styles.css",
+        "assets/**",
+        "sounds/**",
+        "data/**",
+        "package.json",
+        "node_modules/**/*"
+      ],
+      "directories": {
+        "buildResources": "assets"
+      },
+      "win": {
+        "target": [
+          { "target": "nsis", "arch": ["x64"] },
+          { "target": "portable", "arch": ["x64"] }
+        ]
+      },
+      "mac": {
+        "target": ["dmg"]
+      },
+      "linux": {
+        "target": ["AppImage"],
+        "category": "AudioVideo"
+      }
+    }
+}

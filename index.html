@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundPP</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 自定义标题栏 -->
+        <div class="custom-titlebar">
+            <div class="titlebar-left">
+            </div>
+            <div class="titlebar-right">
+                <button class="titlebar-btn" id="minimize-btn">
+                    <svg width="12" height="12" viewBox="0 0 12 12">
+                        <rect x="2" y="5" width="8" height="2" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button class="titlebar-btn" id="close-btn">
+                    <svg width="12" height="12" viewBox="0 0 12 12">
+                        <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 顶部工具栏 -->
+        <header class="toolbar">
+            <div class="toolbar-left">
+                <div class="toolbar-info">
+                    <div class="app-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
+                        </svg>
+                        SoundPP
+                    </div>
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <div class="volume-control">
+                    <i class="fas fa-volume-up volume-icon"></i>
+                    <input type="range" id="volumeSlider" class="volume-slider" min="0" max="100" value="70" title="音量控制">
+                    <span class="volume-value" id="volumeValue">70%</span>
+                </div>
+                <button class="btn btn-primary" id="importBtn">
+                    <i class="fas fa-plus"></i>
+                    导入音频
+                </button>
+                <button class="btn btn-secondary" id="openSoundsBtn">
+                    <i class="fas fa-folder-open"></i>
+                    音频目录
+                </button>
+                <button class="btn btn-secondary" id="settingsBtn">
+                    <i class="fas fa-cog"></i>
+                    设置
+                </button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- 新增分组模态框（与设置风格一致） -->
+            <div class="modal" id="addGroupModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>新建分组</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="addGroupNameInput">分组名称</label>
+                            <input type="text" id="addGroupNameInput" class="form-input" placeholder="请输入分组名称" maxlength="30">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" id="addGroupCancelBtn">取消</button>
+                        <button class="btn btn-primary" id="addGroupConfirmBtn">创建</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 编辑分组描述模态框 -->
+            <div class="modal" id="editGroupModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>编辑分组描述</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="editGroupDescInput">描述/备注</label>
+                            <textarea id="editGroupDescInput" class="form-input" rows="5" placeholder="填写该分组的说明、用途或备注"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" id="editGroupCancelBtn">取消</button>
+                        <button class="btn btn-primary" id="editGroupSaveBtn">保存</button>
+                    </div>
+                </div>
+            </div>
+            <!-- 左侧分组面板 -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h3>音频分组</h3>
+                    <button class="btn-icon" id="addGroupBtn" title="添加分组">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="group-list">
+                    <div class="group-item active" data-group="all">
+                        <i class="fas fa-music"></i>
+                        <span>全部音频</span>
+                        <span class="count">8</span>
+                    </div>
+                    <div class="group-item" data-group="game">
+                        <i class="fas fa-gamepad"></i>
+                        <span>游戏音效</span>
+                        <span class="count">3</span>
+                    </div>
+                    <div class="group-item" data-group="notification">
+                        <i class="fas fa-bell"></i>
+                        <span>通知提醒</span>
+                        <span class="count">2</span>
+                    </div>
+                    <div class="group-item" data-group="music">
+                        <i class="fas fa-headphones"></i>
+                        <span>音乐背景</span>
+                        <span class="count">2</span>
+                    </div>
+                    <div class="group-item" data-group="effect">
+                        <i class="fas fa-magic"></i>
+                        <span>特效音频</span>
+                        <span class="count">1</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 主要内容区域 -->
+            <main class="content-area">
+                <div class="content-header">
+                    <h2>全部音频</h2>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="搜索音频文件..." id="searchInput">
+                    </div>
+                </div>
+
+                <!-- 音频列表 -->
+                <div class="audio-list">
+                    <div class="audio-item">
+                        <div class="audio-info">
+                            <div class="audio-icon">
+                                <i class="fas fa-music"></i>
+                            </div>
+                            <div class="audio-details">
+                                <h4>胜利音效</h4>
+                                <p>游戏胜利时播放的音效</p>
+                                <span class="audio-duration">2.3s</span>
+                            </div>
+                        </div>
+                        <div class="audio-shortcut">
+                            <span class="shortcut-display">Ctrl+Shift+1</span>
+                        </div>
+                        <div class="audio-actions">
+                            <button class="btn-icon play-btn" title="播放">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button class="btn-icon edit-btn" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon delete-btn" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="audio-item">
+                        <div class="audio-info">
+                            <div class="audio-icon">
+                                <i class="fas fa-music"></i>
+                            </div>
+                            <div class="audio-details">
+                                <h4>失败音效</h4>
+                                <p>游戏失败时的提示音</p>
+                                <span class="audio-duration">1.8s</span>
+                            </div>
+                        </div>
+                        <div class="audio-shortcut">
+                            <span class="shortcut-display">Ctrl+Shift+2</span>
+                        </div>
+                        <div class="audio-actions">
+                            <button class="btn-icon play-btn" title="播放">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button class="btn-icon edit-btn" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon delete-btn" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="audio-item">
+                        <div class="audio-info">
+                            <div class="audio-icon">
+                                <i class="fas fa-music"></i>
+                            </div>
+                            <div class="audio-details">
+                                <h4>掌声音效</h4>
+                                <p>会议结束时的掌声</p>
+                                <span class="audio-duration">4.2s</span>
+                            </div>
+                        </div>
+                        <div class="audio-shortcut">
+                            <span class="shortcut-display">Ctrl+Shift+3</span>
+                        </div>
+                        <div class="audio-actions">
+                            <button class="btn-icon play-btn" title="播放">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button class="btn-icon edit-btn" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon delete-btn" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="audio-item">
+                        <div class="audio-info">
+                            <div class="audio-icon">
+                                <i class="fas fa-music"></i>
+                            </div>
+                            <div class="audio-details">
+                                <h4>笑声音效</h4>
+                                <p>搞笑时刻的笑声</p>
+                                <span class="audio-duration">3.1s</span>
+                            </div>
+                        </div>
+                        <div class="audio-shortcut">
+                            <span class="shortcut-display">Ctrl+Shift+4</span>
+                        </div>
+                        <div class="audio-actions">
+                            <button class="btn-icon play-btn" title="播放">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button class="btn-icon edit-btn" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon delete-btn" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="audio-item">
+                        <div class="audio-info">
+                            <div class="audio-icon">
+                                <i class="fas fa-music"></i>
+                            </div>
+                            <div class="audio-details">
+                                <h4>提示音</h4>
+                                <p>通用提示音效</p>
+                                <span class="audio-duration">0.8s</span>
+                            </div>
+                        </div>
+                        <div class="audio-shortcut">
+                            <span class="shortcut-display">未设置</span>
+                        </div>
+                        <div class="audio-actions">
+                            <button class="btn-icon play-btn" title="播放">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button class="btn-icon edit-btn" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon delete-btn" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- 状态栏 -->
+        <footer class="status-bar">
+            <div class="status-left">
+                <span class="status-item">
+                    <i class="fas fa-circle status-online"></i>
+                    后台监听已启用
+                </span>
+                <span class="status-item">
+                    <i class="fas fa-music"></i>
+                    共 8 个音频文件
+                </span>
+            </div>
+            <div class="status-right">
+                <span class="status-item">
+                    <i class="fas fa-keyboard"></i>
+                    4 个快捷键已设置
+                </span>
+                <span class="status-item" id="appVersionItem">
+                    <i class="fas fa-code-branch"></i>
+                    v0.0.0
+                </span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 模态框：导入音频 -->
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>导入音频文件</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-area">
+                    <div class="drop-zone" id="dropZone">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>拖拽音频文件到此处，或点击选择文件</p>
+                        <p class="file-types">支持 MP3, WAV, AAC, OGG 格式</p>
+                        <input type="file" id="fileInput" accept=".mp3,.wav,.aac,.ogg" multiple hidden>
+                        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            选择文件
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：编辑音频 -->
+    <div class="modal" id="editModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>编辑音频</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="edit-form">
+                    <div class="form-group">
+                        <label>音频名称</label>
+                        <input type="text" id="editNameInput" class="form-input" placeholder="请输入音频名称">
+                    </div>
+                    <div class="form-group">
+                        <label>描述</label>
+                        <textarea id="editDescInput" class="form-input" rows="3" placeholder="请输入描述"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>分组</label>
+                        <select id="editGroupSelect" class="form-input">
+                            <option value="game">游戏音效</option>
+                            <option value="meeting">会议专用</option>
+                            <option value="entertainment">娱乐搞笑</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>快捷键</label>
+                        <div class="shortcut-input">
+                            <input type="text" id="editShortcutInput" class="form-input" placeholder="点击‘重新设置’并按下组合键" readonly>
+                            <button class="btn btn-secondary" id="editShortcutRecordBtn">重新设置</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>音频预览</label>
+                        <div class="audio-preview">
+                            <div class="waveform-container">
+                                <div id="waveform"></div>
+                            </div>
+                            <div class="audio-controls">
+                                <button class="btn btn-primary" id="editPreviewPlayBtn">
+                                    <i class="fas fa-play"></i>
+                                    <span id="editPreviewPlayLabel">播放</span>
+                                </button>
+                                <button class="btn btn-secondary" id="editPreviewStopBtn">
+                                    <i class="fas fa-stop"></i>
+                                    停止
+                                </button>
+                                <button class="btn btn-secondary" id="editSliceBtn">
+                                    <i class="fas fa-scissors"></i>
+                                    切片另存
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="editCancelBtn">取消</button>
+                <button class="btn btn-primary" id="editSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：设置 -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>设置</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="edit-form">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="enableHotkeysCheckbox" checked>
+                            启用全局快捷键
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="defaultVolumeRange">默认音量</label>
+                        <div class="volume-control" style="padding: 8px 12px;">
+                            <i class="fas fa-volume-up volume-icon" id="settingsVolumeIcon"></i>
+                            <input type="range" id="defaultVolumeRange" class="volume-slider" min="0" max="100" value="70">
+                            <span class="volume-value" id="settingsVolumeValue">70%</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="outputDeviceSelect">默认输出设备</label>
+                        <select id="outputDeviceSelect" class="form-input">
+                            <option value="default">系统默认</option>
+                        </select>
+                        <span style="color:#6c757d; font-size:12px;">选择音频播放的输出设备（需要系统支持）</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="muteHotkeyDisplay">静音快捷键</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="text" id="muteHotkeyDisplay" class="form-input" placeholder="点击“录制”并按下组合键" readonly>
+                            <button class="btn btn-secondary" id="recordMuteHotkeyBtn">录制</button>
+                            <button class="btn btn-secondary" id="clearMuteHotkeyBtn">清除</button>
+                        </div>
+                        <span style="color:#6c757d; font-size:12px;">按“录制”后，输入组合键（如 Ctrl+Shift+M），无需手动输入文本</span>
+                    </div>
+                    <div class="form-group">
+                        <label>作者</label>
+                        <div style="color:#495057; line-height:1.6;">
+                            白三块，Coding With Cursor and GPT-5
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="settingsCancelBtn">取消</button>
+                <button class="btn btn-primary" id="settingsSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
